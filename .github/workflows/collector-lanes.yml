@@ -10,7 +10,7 @@ on:
         description: "Run length per lane in minutes"
         default: "20"
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "4,19,34,49 * * * *"   # off the quarter-hour marks, which GitHub delays most
 
 permissions:
   contents: read
