@@ -1,0 +1,37 @@
+-- 20260922_nx_zone_map_seed.sql
+-- STATUS: APPLIED to Supabase project ehzxnnxyliapvcvzzmyp on 2026-09-22 (owner-authorized).
+-- Migration name: nx_zone_map_and_county_population. Additive only.
+--
+-- What it created:
+--   business_intelligence.nx_county_population  (state, county_key, population)  3,151 rows, Census PopEst 2024
+--   business_intelligence.nx_zone_map           (state, county, zone A-E, tier_focus, sweep_order, population)  ~3,420 rows
+--   business_intelligence.nx_county_key(text)   normalizer: lowercase, strips County/Parish/Borough/Census Area/city, St. -> saint
+--   business_intelligence.nx_purity_tier        view: tier 1 (fleet/dispatch name signal), 2 (slow/non-mobile site), 3 (phone, no site)
+--   public.nx_zone_for(state, county)           SECURITY DEFINER reader for workers
+--
+-- How zones were assigned:
+--   1. Hand-authored rows from the April 2026 outreach playbooks (FL all 67 counties incl. Hamilton and Madison in Zone D;
+--      TX, CA, NY hub counties) were inserted first and win on conflict.
+--   2. Every other county spelling in collection_targets was zoned by cumulative population share within its state,
+--      ranked by Census 2024 population: A <= 40% (Metro Core, tier 1), B <= 60% (Secondary Metros, tier 2),
+--      C <= 75% (Regional Centers, tiers 1+3), D <= 90% (Small Towns, tier 3), E rest (Rural & Logistics, tiers 1+3).
+--      The largest county is always A; states with >= 5 counties are guaranteed one county in each zone.
+--   3. Six names Census could not match were handled by hand: four legacy/junk keys -> zone E with a note
+--      (AK Valdez-Cordova, AR "Pulaski/Saline", AZ "Apache service area", CA "San Joaquin Valley");
+--      NY "St Lawrence" aliased to St. Lawrence County; NM Doña Ana (mis-encoded name) -> zone B.
+--   4. Connecticut uses the 8 legacy counties (Census now reports planning regions); populations hard-coded from 2020.
+--
+-- Rollback (only if the owner asks):
+--   drop view business_intelligence.nx_purity_tier;
+--   drop function public.nx_zone_for(text, text);
+--   drop function business_intelligence.nx_county_key(text);
+--   drop table business_intelligence.nx_zone_map;
+--   drop table business_intelligence.nx_county_population;
+--
+-- Regenerate the population load: scripts in the blueprint appendix 11 describe the Census CSV
+--   https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/counties/totals/co-est2024-alldata.csv
+--   (SUMLEV = 050, column POPESTIMATE2024), keyed with nx_county_key().
+--
+-- Worker usage:
+--   select * from public.nx_zone_for('OH', 'Franklin County');   -- zone, zone_name, tier_focus, sweep_order
+--   Lane workers order claimed cells by sweep_order asc, then population desc, then category rank.

@@ -1,0 +1,22 @@
+{
+  "name": "yellow-pages-of-ai-data-collection-project",
+  "version": "1.0.0",
+  "description": "Private data-collection adapters for Agenarys source expansion.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "dotenv": "^18.0.0",
+    "slugify": "^1.6.9"
+  }
+}
