@@ -40,6 +40,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run lane worker
+        id: worker
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -51,3 +52,22 @@ jobs:
           fi
           MIN="${{ github.event.inputs.minutes || '20' }}"
           python scripts/worker.py start --lane ${{ matrix.lane }} --hours "$(python -c "print($MIN/60)")"
+
+      # Self-chaining: GitHub's cron is unreliable, so each lane run starts the next one for the same lane.
+      # Needs repository secret ACTIONS_DISPATCH_TOKEN (fine-grained PAT, Actions: read/write on this repo).
+      # Kill switch: set repository variable LANES_ENABLED to "false" to stop the chain.
+      - name: Chain next run for this lane
+        if: ${{ always() && steps.worker.outcome != 'skipped' && vars.LANES_ENABLED != 'false' }}
+        env:
+          DISPATCH_TOKEN: ${{ secrets.ACTIONS_DISPATCH_TOKEN }}
+          LANE: ${{ matrix.lane }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "ACTIONS_DISPATCH_TOKEN not set; not chaining (GitHub cron only)."
+            exit 0
+          fi
+          sleep 20
+          code=$(curl -sS -o /tmp/dispatch.out -w "%{http_code}" -X POST             -H "Authorization: Bearer $DISPATCH_TOKEN" -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$REPO/actions/workflows/collector-lanes.yml/dispatches"             -d "{\"ref\":\"main\",\"inputs\":{\"lane\":\"$LANE\",\"minutes\":\"20\"}}")
+          echo "dispatch for $LANE -> HTTP $code"; cat /tmp/dispatch.out || true
+          [ "$code" = "204" ]
