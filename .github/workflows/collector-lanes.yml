@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   collect:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -28,10 +29,6 @@ jobs:
       group: ypoai-lane-${{ matrix.lane }}
       cancel-in-progress: false
     steps:
-      - name: Skip lanes not requested
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lane != 'all' && github.event.inputs.lane != matrix.lane }}
-        run: echo "lane ${{ matrix.lane }} not requested" && exit 0
-
       - name: Check out code
         uses: actions/checkout@v4
 

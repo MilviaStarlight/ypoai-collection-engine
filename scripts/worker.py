@@ -274,8 +274,9 @@ class Overpass:
         if wait > 0:
             time.sleep(wait)
         last_err: Exception | None = None
-        for attempt in range(4):
-            url = OVERPASS_ENDPOINTS[attempt % len(OVERPASS_ENDPOINTS)]
+        for attempt in range(5):
+            # stay on the primary endpoint (fast; per-client slot limit handled by slot_wait); mirror only as last resort
+            url = OVERPASS_ENDPOINTS[0] if attempt < 4 else OVERPASS_ENDPOINTS[-1]
             try:
                 r = self.s.post(url, data={"data": q}, timeout=OVERPASS_TIMEOUT)
                 self.last_call = time.time()
@@ -290,7 +291,8 @@ class Overpass:
                 return data.get("elements", [])
             except (requests.RequestException, ValueError) as exc:
                 last_err = exc
-                time.sleep(5 * (attempt + 1))
+                self.last_call = time.time()
+                time.sleep(self.slot_wait(OVERPASS_ENDPOINTS[0]) if attempt < 4 else 5)
         raise RuntimeError(f"overpass failed after retries: {last_err}")
 
 
