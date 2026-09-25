@@ -16,3 +16,4 @@ logs/
 reports/
 tmp_*.json
 *.bat
+!scripts/run_lane.cmd

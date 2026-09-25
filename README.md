@@ -11,6 +11,10 @@ PowerShell, with `SUPABASE_SERVICE_ROLE_KEY` set as a user environment variable:
 $env:YPOAI_LANE="W4"; $t="$env:TEMP\ypoai-$env:YPOAI_LANE"; if (Test-Path $t) { Remove-Item -Recurse -Force $t }; git clone --depth 1 https://github.com/MilviaStarlight/ypoai-collection-engine $t; pip install -q -r "$t\requirements.txt"; python "$t\scripts\worker.py" start --lane $env:YPOAI_LANE --hours 8; Remove-Item -Recurse -Force $t
 ```
 
+Simplest way to keep a PC lane running day and night (no Codex or Claude window needed): download `scripts/run_lane.cmd`
+once, then in its own window run `run_lane.cmd W3`. It re-clones and restarts every 8 hours until the window is closed.
+Two windows per PC: PC-A W1+W2, PC-B W3+W4, PC-C W5+W6.
+
 Status (six lines, safe to run any time):
 
 ```powershell
