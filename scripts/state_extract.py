@@ -46,7 +46,7 @@ GEOFABRIK = "https://download.geofabrik.de/north-america/us/{slug}-latest.osm.pb
 COUNTIES_URL = "https://www2.census.gov/geo/tiger/GENZ2021/shp/cb_2021_us_county_500k.zip"  # 2021: legacy CT counties
 SOURCE_NAME = "OpenStreetMap Geofabrik state extract"
 COMPONENT = "gh-worker"
-CHUNK_ROWS = 1500
+CHUNK_ROWS = 500
 FILTER_KEYS = ("amenity", "shop", "craft", "office", "leisure", "healthcare", "sport")
 
 STATES = {
