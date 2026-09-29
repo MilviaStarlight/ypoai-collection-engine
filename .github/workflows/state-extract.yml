@@ -1,0 +1,63 @@
+name: YPOAI statewide extract
+
+# One job per state: download the state's OpenStreetMap extract from Geofabrik once, extract every
+# business for all categories and counties, record in Supabase, close the state's cells.
+# No per-request calls to public map servers. Politeness: at most 4 downloads in parallel.
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "Comma-separated state codes (e.g. OH,MI) or 'all'"
+        default: "all"
+  schedule:
+    - cron: "17 6 3 * *"   # monthly refresh, 3rd of the month 06:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      states: ${{ steps.s.outputs.states }}
+    steps:
+      - id: s
+        env:
+          INPUT: ${{ github.event.inputs.states || 'all' }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          all_states = "AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split()
+          raw = os.environ["INPUT"].strip().upper()
+          states = all_states if raw in ("", "ALL") else [s.strip() for s in raw.split(",") if s.strip() in all_states]
+          print("states=" + json.dumps(states))
+          PY
+
+  extract:
+    needs: plan
+    if: ${{ needs.plan.outputs.states != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        state: ${{ fromJSON(needs.plan.outputs.states) }}
+    concurrency:
+      group: ypoai-extract-${{ matrix.state }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          pip install -q -r requirements.txt
+      - name: Extract ${{ matrix.state }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/state_extract.py --state ${{ matrix.state }}

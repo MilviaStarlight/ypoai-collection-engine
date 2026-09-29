@@ -21,7 +21,18 @@ Status (six lines, safe to run any time):
 python scripts\worker.py status --lane W4
 ```
 
-## What the worker does
+## Primary collector (since 2026-09-29): statewide extracts
+
+`scripts/state_extract.py` + `.github/workflows/state-extract.yml`. One job per state downloads the state's
+OpenStreetMap extract from Geofabrik, extracts every business for all categories and counties in one pass,
+assigns counties with Census boundaries, records in bulk (`nx_record_bulk`), and closes the state's cells
+(`nx_close_state_cells`). Runs monthly and on demand. No per-request calls to public map servers.
+
+The per-cell lane worker below (`worker.py`, `collector-lanes.yml`) is retired and its workflow is disabled.
+It was blocked by overpass-api.de after a retry storm; it now has a circuit breaker and must not be
+re-enabled against public Overpass instances.
+
+## What the (retired) lane worker does
 1. Reads its lane (states, batch size) from Supabase `nx_worker_lanes`.
 2. Claims county × category cells through the row-locked RPC `agenarys_durable_next_targets` — two workers can never take the same cell.
 3. Pulls every tagged business for that county and category from OpenStreetMap via the Overpass API in one request (fair-use paced).

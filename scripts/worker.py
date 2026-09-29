@@ -50,6 +50,7 @@ OVERPASS_ENDPOINTS = [
 OVERPASS_TIMEOUT = 90
 OVERPASS_PACE_SECONDS = 2.0        # fair use: one request at a time, small gap between requests
 MAX_ROWS_PER_CELL = 1500
+MAX_CONSECUTIVE_SOURCE_ERRORS = 5   # circuit breaker: stop the whole worker instead of hammering a failing source
 SUPABASE_TIMEOUT = 120
 COUNTY_SUFFIX_RE = re.compile(r"\s+(County|Parish|Borough|Census Area|Municipality|City and Borough|city)$", re.I)
 
@@ -383,6 +384,7 @@ class Worker:
         self.execution_id = f"{self.lane_code}-{host}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
         self.worker_name = f"ypoai-pc-{self.lane_code}"
         self.lane: dict[str, Any] = {}
+        self.consecutive_source_errors = 0
         self.stats = {"cells": 0, "inserted": 0, "duplicates": 0, "blocked": 0, "errors": 0, "overpass_calls": 0}
 
     # lane + control
@@ -464,8 +466,15 @@ class Worker:
             log("cell_error", state=state, county=county, category=category, error=str(exc)[:200])
             self.heartbeat("error", tid, state=state, county=county, category=category, error_fingerprint="overpass-error", message=str(exc)[:200])
             self.close(target, "ready", "overpass_error_released")
+            self.consecutive_source_errors += 1
+            if self.consecutive_source_errors >= MAX_CONSECUTIVE_SOURCE_ERRORS:
+                self.heartbeat("error", None, error_fingerprint="circuit-breaker-open", message=str(exc)[:200])
+                log("circuit_breaker_open", consecutive_errors=self.consecutive_source_errors)
+                raise SystemExit(3)
+            time.sleep(min(300, 30 * self.consecutive_source_errors))
             return
         self.stats["overpass_calls"] = self.overpass.calls
+        self.consecutive_source_errors = 0
         rows = dedupe([r for r in (normalize_element(e, category=category, state=state, county=county) for e in elements) if r])
         rows = rows[:MAX_ROWS_PER_CELL]
         if not rows:
