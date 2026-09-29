@@ -63,6 +63,7 @@ STATES = {
     "SC": ("45", "south-carolina"), "SD": ("46", "south-dakota"), "TN": ("47", "tennessee"), "TX": ("48", "texas"),
     "UT": ("49", "utah"), "VT": ("50", "vermont"), "VA": ("51", "virginia"), "WA": ("53", "washington"),
     "WV": ("54", "west-virginia"), "WI": ("55", "wisconsin"), "WY": ("56", "wyoming"),
+    "PR": ("72", "puerto-rico"),  # counties are municipios in the Census file
 }
 
 SEL_RE = re.compile(r'\["([^"]+)"(?:(=|~)"((?:[^"\\]|\\.)*)")?\]')
