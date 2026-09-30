@@ -1,0 +1,33 @@
+name: YPOAI email finder
+
+# Visits each listed business's own website and records its best contact email (owner/decision maker preferred).
+# Four workers, each takes batches of 200 listings for up to 5 hours, then stops. Runs daily until the queue is
+# empty; after that each run only picks up new listings.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"   # daily 09:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q requests
+      - name: Find emails (worker ${{ matrix.worker }})
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/email_finder.py --budget-minutes 300 --batch 200
