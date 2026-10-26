@@ -26,7 +26,7 @@ python scripts\worker.py status --lane W4
 `scripts/state_extract.py` + `.github/workflows/state-extract.yml`. One job per state downloads the state's
 OpenStreetMap extract from Geofabrik, extracts every business for all categories and counties in one pass,
 assigns counties with Census boundaries, records in bulk (`nx_record_bulk`), and closes the state's cells
-(`nx_close_state_cells`). Runs monthly and on demand. No per-request calls to public map servers.
+(`nx_close_state_cells`). Runs daily at 06:17 UTC (PostMyPrice states first, 2 states at a time) and on demand. No per-request calls to public map servers.
 
 The per-cell lane worker below (`worker.py`, `collector-lanes.yml`) is retired and its workflow is disabled.
 It was blocked by overpass-api.de after a retry storm; it now has a circuit breaker and must not be
