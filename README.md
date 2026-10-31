@@ -28,6 +28,15 @@ OpenStreetMap extract from Geofabrik, extracts every business for all categories
 assigns counties with Census boundaries, records in bulk (`nx_record_bulk`), and closes the state's cells
 (`nx_close_state_cells`). Runs monthly and on demand. No per-request calls to public map servers.
 
+## Second source: Overture Maps places
+
+`scripts/overture_extract.py` + `.github/workflows/overture-extract.yml` (manual only). OpenStreetMap is thin in
+places like Puerto Rico; Overture Maps publishes an open places dataset (Meta, Microsoft, Foursquare and others,
+CDLA-Permissive-2.0 / Apache-2.0 / CC0) on a public S3 bucket. One job per state reads only the rows inside the
+state's bounding box, keeps places with confidence 0.5 or more, maps Overture categories to YPOAI slugs, assigns
+counties with the same Census file, and records through `nx_record_bulk` (matches with OSM rows count as duplicates).
+Dry run: `python scripts/overture_extract.py --state PR --county "Dorado Municipio" --dry-run`.
+
 The per-cell lane worker below (`worker.py`, `collector-lanes.yml`) is retired and its workflow is disabled.
 It was blocked by overpass-api.de after a retry storm; it now has a circuit breaker and must not be
 re-enabled against public Overpass instances.
