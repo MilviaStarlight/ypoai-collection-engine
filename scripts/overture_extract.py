@@ -43,7 +43,7 @@ import worker  # noqa: E402  (normalizers, Supabase client)
 
 BUCKET = "overturemaps-us-west-2"
 REGION = "us-west-2"
-SOURCE_NAME = "Overture Maps places"
+SOURCE_NAME = "Overture Maps places (open data)"  # same name as the Oct 16 2026 Puerto Rico load
 SOURCE_FAMILY = "overture_places"
 COMPONENT = "gh-worker"
 CHUNK_ROWS = 500
@@ -150,6 +150,29 @@ def read_places(release: str, bounds: tuple[float, float, float, float]):
         yield from batch.to_pylist()
 
 
+def source_url_for(state: str, phone: str | None, category: str, place_id: str) -> str:
+    """Same URL scheme as the Oct 16 2026 Puerto Rico Overture load, so the durable dedupe (exact
+    source_url per state, county and category) recognises those rows instead of inserting them again."""
+    digits = re.sub(r"\D", "", phone or "")
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) == 10:
+        return f"https://overturemaps.org/#places/{state.lower()}/{digits}/{category}"
+    return f"https://overturemaps.org/#places/{state.lower()}/id-{place_id}/{category}"
+
+
+def county_near(tree, geoms, names, lon: float, lat: float, max_deg: float = 0.02) -> str | None:
+    """Point in county first; for coastal points just outside a coarse boundary, the nearest county
+    within about 2 km."""
+    hit = se.county_of(tree, geoms, names, lon, lat)
+    if hit:
+        return hit
+    from shapely.geometry import Point
+    pt = Point(lon, lat)
+    best = min(range(len(geoms)), key=lambda i: geoms[i].distance(pt))
+    return names[best] if geoms[best].distance(pt) <= max_deg else None
+
+
 def to_row(p: dict[str, Any], *, category: str, state: str, county: str, release: str) -> dict[str, Any] | None:
     name = worker.norm_space(((p.get("names") or {}).get("primary")))
     if not name or not p.get("id"):
@@ -169,7 +192,7 @@ def to_row(p: dict[str, Any], *, category: str, state: str, county: str, release
     lat = (bb.get("ymin") + bb.get("ymax")) / 2 if bb.get("ymin") is not None else None
     lon = (bb.get("xmin") + bb.get("xmax")) / 2 if bb.get("xmin") is not None else None
     sid = f"overture:{p['id']}"
-    source_url = f"https://explore.overturemaps.org/#16/{lat}/{lon}" if lat is not None else f"https://overturemaps.org/?{p['id']}"
+    source_url = source_url_for(state, phone, category, p["id"])
     key = worker.norm_key(name)
     return {
         "business_name": name,
@@ -255,7 +278,7 @@ def run(state: str, counties_zip: str | None, only_county: str | None, dry_run: 
             bb = p.get("bbox") or {}
             if bb.get("xmin") is None:
                 continue
-            county = se.county_of(tree, geoms, names, (bb["xmin"] + bb["xmax"]) / 2, (bb["ymin"] + bb["ymax"]) / 2)
+            county = county_near(tree, geoms, names, (bb["xmin"] + bb["xmax"]) / 2, (bb["ymin"] + bb["ymax"]) / 2)
             if not county:
                 outside += 1; continue
             row = to_row(p, category=cat, state=state, county=county, release=release)

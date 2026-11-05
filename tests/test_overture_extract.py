@@ -23,6 +23,11 @@ class OvertureMappingTest(unittest.TestCase):
         missing = sorted({s for s in ox.OVERTURE_TO_SLUG.values() if s not in worker.CATEGORY_SELECTORS})
         self.assertEqual(missing, [])
 
+    def test_source_url_matches_earlier_load(self):
+        self.assertEqual(ox.source_url_for("PR", "+1 787-448-6101", "medical-services", "x"),
+                         "https://overturemaps.org/#places/pr/7874486101/medical-services")
+        self.assertEqual(ox.source_url_for("PR", None, "barber", "abc"), "https://overturemaps.org/#places/pr/id-abc/barber")
+
     def test_row_shape(self):
         p = {"id": "abc", "names": {"primary": "Panaderia La Ceiba"}, "phones": ["+17875551234"], "websites": ["laceiba.pr"],
              "emails": None, "addresses": [{"freeform": "Calle 1", "locality": "Dorado", "postcode": "00646"}],
