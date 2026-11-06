@@ -184,6 +184,8 @@ def to_row(p: dict[str, Any], *, category: str, state: str, county: str, release
     website = worker.norm_space((p.get("websites") or [None])[0]) or None
     if website and not re.match(r"^https?://", website, re.I):
         website = "https://" + website
+    if not worker.COLLECT_WEBSITES:
+        website = None
     phone = worker.norm_space((p.get("phones") or [None])[0]) or None
     email = worker.norm_space((p.get("emails") or [None])[0]) or None
     if email and not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):

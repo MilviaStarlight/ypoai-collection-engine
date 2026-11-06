@@ -41,6 +41,7 @@ BI_SCHEMA = "business_intelligence"
 SOURCE_NAME = "OpenStreetMap Overpass (county bulk)"
 SOURCE_FAMILY = "osm_overpass"
 COMPONENT_NAME = "pc-worker"
+COLLECT_WEBSITES = False  # owner Nov 6 2026: keep names, phones and addresses; do not store website links
 PRIVATE_REVIEW_NOTE = "Public candidate. Pending private review; not approved for public directory."
 USER_AGENT = "YPOAI-collector/1.0 (+https://yellowpagesofai.com; hello@yellowpagesofai.com)"
 OVERPASS_ENDPOINTS = [
@@ -314,6 +315,8 @@ def normalize_element(el: dict[str, Any], *, category: str, state: str, county: 
     website = norm_space(tags.get("website") or tags.get("contact:website") or tags.get("url")) or None
     if website and not re.match(r"^https?://", website, re.I):
         website = "https://" + website
+    if not COLLECT_WEBSITES:
+        website = None
     phone = norm_space(tags.get("phone") or tags.get("contact:phone")) or None
     email = norm_space(tags.get("email") or tags.get("contact:email")) or None
     if email and not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):

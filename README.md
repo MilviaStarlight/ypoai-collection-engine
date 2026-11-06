@@ -26,11 +26,13 @@ python scripts\worker.py status --lane W4
 `scripts/state_extract.py` + `.github/workflows/state-extract.yml`. One job per state downloads the state's
 OpenStreetMap extract from Geofabrik, extracts every business for all categories and counties in one pass,
 assigns counties with Census boundaries, records in bulk (`nx_record_bulk`), and closes the state's cells
-(`nx_close_state_cells`). Runs daily at 06:17 UTC (PostMyPrice states first, 2 states at a time) and on demand. No per-request calls to public map servers.
+(`nx_close_state_cells`). Runs every 4 hours on six rotating state groups (`scripts/plan_states.py`), so every state is refreshed daily and the
+PostMyPrice launch states plus Puerto Rico come first; 2 states at a time; also on demand. Website links are not
+stored (`worker.COLLECT_WEBSITES = False`, owner decision Nov 6 2026): names, phones and addresses only. No per-request calls to public map servers.
 
 ## Second source: Overture Maps places
 
-`scripts/overture_extract.py` + `.github/workflows/overture-extract.yml` (manual only). OpenStreetMap is thin in
+`scripts/overture_extract.py` + `.github/workflows/overture-extract.yml` (every 4 hours, same rotating groups, 2.5 hours after the OSM run). OpenStreetMap is thin in
 places like Puerto Rico; Overture Maps publishes an open places dataset (Meta, Microsoft, Foursquare and others,
 CDLA-Permissive-2.0 / Apache-2.0 / CC0) on a public S3 bucket. One job per state reads only the rows inside the
 state's bounding box, keeps places with confidence 0.5 or more, maps Overture categories to YPOAI slugs, assigns

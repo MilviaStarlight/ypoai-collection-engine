@@ -35,7 +35,7 @@ class OvertureMappingTest(unittest.TestCase):
              "confidence": 0.9}
         r = ox.to_row(p, category="cafes-bakeries", state="PR", county="Dorado Municipio", release="2026-10-21.0")
         self.assertEqual(r["source_identifier"], "overture:abc")
-        self.assertEqual(r["website_url"], "https://laceiba.pr")
+        self.assertIsNone(r["website_url"])  # owner Nov 6 2026: website links are not collected
         self.assertEqual(r["county"], "Dorado Municipio")
         self.assertEqual(r["city"], "Dorado")
 

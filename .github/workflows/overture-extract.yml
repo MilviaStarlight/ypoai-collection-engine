@@ -2,9 +2,11 @@ name: YPOAI Overture places extract
 
 # Second free business source next to OpenStreetMap. One job per state reads only the Overture Maps
 # places rows inside the state's bounding box from the public S3 bucket, maps categories, assigns
-# counties, and records through the same dedupe path. Manual only until the owner turns on a schedule.
+# counties, and records through the same dedupe path. Runs every 4 hours on rotating state groups (owner Nov 6 2026).
 
 on:
+  schedule:
+    - cron: "47 2-23/4 * * *"   # every 4 hours, 2.5 hours after the OSM run: same six rotating state groups
   workflow_dispatch:
     inputs:
       states:
@@ -20,18 +22,12 @@ jobs:
     outputs:
       states: ${{ steps.s.outputs.states }}
     steps:
+      - uses: actions/checkout@v4
       - id: s
         env:
-          INPUT: ${{ github.event.inputs.states || 'PR' }}
-        run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, os
-          launch = "PR FL VA NY NJ MO MN OR WA".split()
-          all_states = launch + "AL AK AZ AR CA CO CT DE DC GA HI ID IL IN IA KS KY LA ME MD MA MI MS MT NE NV NH NM NC ND OH OK PA RI SC SD TN TX UT VT WV WI WY".split()
-          raw = os.environ["INPUT"].strip().upper()
-          states = launch if raw == "LAUNCH" else all_states if raw == "ALL" else [s.strip() for s in raw.split(",") if s.strip() in all_states]
-          print("states=" + json.dumps(states))
-          PY
+          EVENT: ${{ github.event_name }}
+          INPUT: ${{ github.event.inputs.states }}
+        run: python3 scripts/plan_states.py >> "$GITHUB_OUTPUT"
 
   extract:
     needs: plan
