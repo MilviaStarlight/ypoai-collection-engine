@@ -252,7 +252,7 @@ def run(state: str, pbf: str | None, counties_zip: str | None, dry_run: bool) ->
         rows.sort(key=lambda r: (r["county"], r["category_slug"]))
         for i in range(0, len(rows), CHUNK_ROWS):
             chunk = rows[i:i + CHUNK_ROWS]
-            for attempt in range(3):
+            for attempt in range(5):
                 try:
                     res = supa.rpc("nx_record_bulk", {"p_worker_name": f"ypoai-extract-{state}", "p_state": state,
                                                       "p_source_name": SOURCE_NAME, "p_source_url": GEOFABRIK.format(slug=slug),
@@ -261,10 +261,10 @@ def run(state: str, pbf: str | None, counties_zip: str | None, dry_run: bool) ->
                     break
                 except Exception as exc:  # noqa: BLE001
                     log("record_retry", attempt=attempt + 1, error=str(exc)[:200])
-                    time.sleep(10 * (attempt + 1))
+                    time.sleep(30 * 2 ** attempt)   # 30s, 60s, 120s, 240s, 480s: rides out a busy database
             else:
                 hb("error", error_fingerprint="record-failed")
-                raise SystemExit("recording failed three times; stopping this state")
+                raise SystemExit("recording failed five times; stopping this state")
             for g in res:
                 inserted_by_group[(g["county"], g["category_slug"])] += int(g.get("inserted_count") or 0)
                 total_ins += int(g.get("inserted_count") or 0)
