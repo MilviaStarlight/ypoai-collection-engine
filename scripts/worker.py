@@ -42,6 +42,8 @@ SOURCE_NAME = "OpenStreetMap Overpass (county bulk)"
 SOURCE_FAMILY = "osm_overpass"
 COMPONENT_NAME = "pc-worker"
 COLLECT_WEBSITES = False  # owner Nov 6 2026: keep names, phones and addresses; do not store website links
+EMAIL_TAGS = frozenset(("email", "contact:email"))
+WEBSITE_TAGS = frozenset(("website", "contact:website", "url"))
 PRIVATE_REVIEW_NOTE = "Public candidate. Pending private review; not approved for public directory."
 USER_AGENT = "YPOAI-collector/1.0 (+https://yellowpagesofai.com; hello@yellowpagesofai.com)"
 OVERPASS_ENDPOINTS = [
@@ -199,6 +201,11 @@ def norm_space(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
+def filter_contact_tags(tags: dict[str, str]) -> dict[str, str]:
+    excluded = EMAIL_TAGS | (WEBSITE_TAGS if not COLLECT_WEBSITES else frozenset())
+    return {key: value for key, value in tags.items() if key not in excluded}
+
+
 def norm_key(value: Any) -> str:
     return re.sub(r"[^A-Z0-9]+", "", norm_space(value).upper())
 
@@ -299,7 +306,7 @@ class Overpass:
 
 
 def normalize_element(el: dict[str, Any], *, category: str, state: str, county: str) -> dict[str, Any] | None:
-    tags = el.get("tags") or {}
+    tags = filter_contact_tags(el.get("tags") or {})
     name = norm_space(tags.get("name") or tags.get("brand") or tags.get("official_name"))
     if not name:
         return None
@@ -318,9 +325,7 @@ def normalize_element(el: dict[str, Any], *, category: str, state: str, county: 
     if not COLLECT_WEBSITES:
         website = None
     phone = norm_space(tags.get("phone") or tags.get("contact:phone")) or None
-    email = norm_space(tags.get("email") or tags.get("contact:email")) or None
-    if email and not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
-        email = None
+    email = None
     lat = el.get("lat") or (el.get("center") or {}).get("lat")
     lon = el.get("lon") or (el.get("center") or {}).get("lon")
     source_url = f"https://www.openstreetmap.org/{osm_type}/{osm_id}"

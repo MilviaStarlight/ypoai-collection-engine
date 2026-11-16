@@ -144,8 +144,10 @@ def read_places(release: str, bounds: tuple[float, float, float, float]):
     minx, miny, maxx, maxy = bounds
     x, y = pc.field("bbox", "xmin"), pc.field("bbox", "ymin")
     flt = (x >= minx) & (x <= maxx) & (y >= miny) & (y <= maxy)
-    cols = ["id", "names", "basic_category", "taxonomy", "phones", "websites", "emails", "addresses", "bbox",
-            "confidence", "operating_status"]
+    cols = ["id", "names", "basic_category", "taxonomy", "phones", "addresses", "bbox", "confidence",
+            "operating_status"]
+    if worker.COLLECT_WEBSITES:
+        cols.append("websites")
     for batch in d.to_batches(columns=cols, filter=flt):
         yield from batch.to_pylist()
 
@@ -187,9 +189,7 @@ def to_row(p: dict[str, Any], *, category: str, state: str, county: str, release
     if not worker.COLLECT_WEBSITES:
         website = None
     phone = worker.norm_space((p.get("phones") or [None])[0]) or None
-    email = worker.norm_space((p.get("emails") or [None])[0]) or None
-    if email and not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
-        email = None
+    email = None
     bb = p.get("bbox") or {}
     lat = (bb.get("ymin") + bb.get("ymax")) / 2 if bb.get("ymin") is not None else None
     lon = (bb.get("xmin") + bb.get("xmax")) / 2 if bb.get("xmin") is not None else None
