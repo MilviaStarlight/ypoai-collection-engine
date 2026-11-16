@@ -142,7 +142,7 @@ def read_places(pbf_path: str) -> list[dict[str, Any]]:
             return None
         if not any(k in tags for k in FILTER_KEYS):
             return None
-        return {t.k: t.v for t in tags}
+        return worker.filter_contact_tags({t.k: t.v for t in tags})
 
     class H(osmium.SimpleHandler):
         def node(self, n):
