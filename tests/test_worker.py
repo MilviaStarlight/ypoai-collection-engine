@@ -46,7 +46,7 @@ class TestWorkerPureFunctions(unittest.TestCase):
         self.assertEqual(row["business_name"], "Buckeye Diner")
         self.assertEqual(row["source_url"], "https://www.openstreetmap.org/way/42")
         self.assertEqual(row["source_identifier"], "osm:way:42")
-        self.assertEqual(row["website_url"], "https://buckeyediner.com")
+        self.assertIsNone(row["website_url"])  # owner Nov 6 2026: website links are not collected
         self.assertEqual(row["address_line1"], "12 High St")
         self.assertEqual(row["city"], "Columbus")
         self.assertEqual(row["postal_code"], "43215")

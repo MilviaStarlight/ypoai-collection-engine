@@ -1,0 +1,56 @@
+name: YPOAI Overture places extract
+
+# Second free business source next to OpenStreetMap. One job per state reads only the Overture Maps
+# places rows inside the state's bounding box from the public S3 bucket, maps categories, assigns
+# counties, and records through the same dedupe path. Runs every 4 hours on rotating state groups (owner Nov 6 2026).
+
+on:
+  schedule:
+    - cron: "47 2-23/4 * * *"   # every 4 hours, 2.5 hours after the OSM run: same six rotating state groups
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "Comma-separated state codes (e.g. PR or FL,VA) or 'launch' for the 9 PostMyPrice states"
+        default: "PR"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      states: ${{ steps.s.outputs.states }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: s
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT: ${{ github.event.inputs.states }}
+        run: python3 scripts/plan_states.py >> "$GITHUB_OUTPUT"
+
+  extract:
+    needs: plan
+    if: ${{ needs.plan.outputs.states != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        state: ${{ fromJSON(needs.plan.outputs.states) }}
+    concurrency:
+      group: ypoai-overture-${{ matrix.state }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tools
+        run: pip install -q -r requirements.txt
+      - name: Extract ${{ matrix.state }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/overture_extract.py --state ${{ matrix.state }}

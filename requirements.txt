@@ -2,3 +2,4 @@ requests>=2.31
 osmium>=3.7
 shapely>=2.0
 pyshp>=2.3
+pyarrow>=15
