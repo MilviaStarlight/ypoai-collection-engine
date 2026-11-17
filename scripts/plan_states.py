@@ -18,6 +18,11 @@ REST = ("AL AK AZ AR CA CO CT DE DC GA HI ID IL IN IA KS KY LA ME MD MA MI MS MT
 ALL = LAUNCH + REST
 GROUPS = 6
 
+# Owner Nov 17 2026: automatic runs paused until the collectors write to the Nexus project instead of
+# the main Agenarys database (two runs on Nov 16 used up its disk activity budget). Manual runs still work.
+# Set back to False to resume the every-4-hours schedule.
+SCHEDULE_PAUSED = True
+
 
 def groups() -> list[list[str]]:
     rest = [REST[i::GROUPS - 1] for i in range(GROUPS - 1)]
@@ -26,6 +31,8 @@ def groups() -> list[list[str]]:
 
 def plan(event: str, raw: str, hour: int) -> list[str]:
     if event == "schedule":
+        if SCHEDULE_PAUSED:
+            return []
         return groups()[(hour // 4) % GROUPS]
     raw = (raw or "").strip().upper()
     if raw in ("", "ALL"):
