@@ -175,12 +175,24 @@ def prefilter(pbf_path: str, workdir: str) -> str:
     return out
 
 
-def download(url: str, dest: str) -> None:
-    with requests.get(url, stream=True, timeout=600, headers={"User-Agent": worker.USER_AGENT}) as r:
-        r.raise_for_status()
-        with open(dest, "wb") as f:
-            for chunk in r.iter_content(1 << 20):
-                f.write(chunk)
+DOWNLOAD_ATTEMPTS = 5
+
+
+def download(url: str, dest: str, sleep=time.sleep) -> None:
+    """Download with retries: a runner that briefly has no network should not cost the state its whole run."""
+    for attempt in range(DOWNLOAD_ATTEMPTS):
+        try:
+            with requests.get(url, stream=True, timeout=600, headers={"User-Agent": worker.USER_AGENT}) as r:
+                r.raise_for_status()
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_content(1 << 20):
+                        f.write(chunk)
+            return
+        except requests.RequestException as exc:
+            if attempt == DOWNLOAD_ATTEMPTS - 1:
+                raise
+            log("download_retry", attempt=attempt + 1, error=str(exc)[:200])
+            sleep(20 * 2 ** attempt)   # 20s, 40s, 80s, 160s
 
 
 # --- main ----------------------------------------------------------------------------------------
