@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import plan_states as ps  # noqa: E402
@@ -14,9 +15,16 @@ class PlanStatesTest(unittest.TestCase):
         self.assertEqual(len(ps.ALL), 52)
 
     def test_schedule_rotates_through_six_groups_per_day(self):
-        seen = [tuple(ps.plan("schedule", "", h)) for h in range(0, 24, 4)]
-        self.assertEqual(len(set(seen)), 6)
-        self.assertEqual(ps.plan("schedule", "", 1)[0], "PR")
+        with mock.patch.object(ps, "SCHEDULE_PAUSED", False):
+            seen = [tuple(ps.plan("schedule", "", h)) for h in range(0, 24, 4)]
+            self.assertEqual(len(set(seen)), 6)
+            self.assertEqual(ps.plan("schedule", "", 1)[0], "PR")
+
+    def test_paused_schedule_plans_no_states(self):
+        with mock.patch.object(ps, "SCHEDULE_PAUSED", True):
+            for h in range(24):
+                self.assertEqual(ps.plan("schedule", "", h), [])
+            self.assertEqual(ps.plan("workflow_dispatch", "PR", 0), ["PR"])
 
     def test_manual_inputs(self):
         self.assertEqual(ps.plan("workflow_dispatch", "pr, fl, xx", 0), ["PR", "FL"])
